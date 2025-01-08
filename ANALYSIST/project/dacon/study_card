@@ -1,0 +1,243 @@
+pie plot
+
+value_counts를 통해 개수를 구할때 normalize=True를 통해 비율을 확인할 수 있다.
+-> pie 차트를 통해 시각화
+
+fig, ax = plt.subplot(figsize=(,))
+
+credit_freq = train['credit'].value_counts()
+
+ax.pie(credit_freq, labels = , autopct='') / autopct를 통해 어느자리수 까지 표현할지.
+plt.title('', size=)
+plt.show()
+
+---------------------------------------------------------------------------------------------------------------
+
+연속형 변수 분포 확인 - 히스토그램
+
+데이터의 분포(정규, 이항, 왜도, 첨도)와 통계적 특성을 직관적으로 확인
+이상치 탐지와 분포 특성 파악은 모델링에 매우 중요
+이상치를 시각적으로 확인할 수 있음
+특정 모델은 변수가 정규분포일때 더 나은 성능을 보이기 때문에 로그변환과 같은 변환을 고려하여야 할 수도 있음
+
+컬럼명을 리스트로 생성하여 연속형 변수들에 대해서 한번에 히스토그램을 파악할 수 있다.
+
+sequential_columns = ['income_total','days_birth','days_employed','family_size','begin_month']
+
+fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(14, 8))
+
+for idx, col in enumerate(sequential_columns):
+    r, c = divmod(idx, 2)
+    sns.___(train[col], bins=50, kde=True, ax=ax[r][c])
+    ax[r][c].set_title(col)
+
+# 빈 subplot 제거 - 3* 2의 칸을 생성했는데 5개의 플랏만 생성
+fig.delaxes(ax[2][1])
+
+plt.tight_layout() / 그래프가 겹치지 않도록 보기좋게 여백을 조정
+plt.show()
+
+sequential_columns에 있는 각 변수들에 대해서 히스토 그램을 그린다.
+
+divmod() 함수는 다음과 같다
+    quotient, remainder = divmod(a, b)
+
+    a: 피제수(나누어지는 수)
+    b: 제수(나누는 수)
+    quotient: a // b (정수 나눗셈의 결과)
+    remainder: a % b (나머지)
+    
+    따라서 
+
+    r, c = divmod(idx, 2) 에서 for문에 의해 idx에 0-4까지의 값이 들어오게 되면
+    좌표가 (0,0) (0,1) (1,0) (1,1) (2,0)으로 설정 되는 것이다.
+
+---------------------------------------------------------------------------------------------------------------
+
+train['family_size'] = train['family_size'].apply(lambda x: 5 if x >= 6 else x)
+
+family_size에 대해서 x가 6보다 크면 5로 치환하는 함수를 적용한다
+
+---------------------------------------------------------------------------------------------------------------
+
+# 나이 계산
+train['age'] = (train['days_birth'] // -365)
+test['age'] = (test['days_birth'] // -365)
+
+# 연령대 구분
+bins = [20, 30, 40, 50, 60, 70]
+labels = ['20대', '30대', '40대', '50대', '60대']
+
+# 생성된 bins를 train 데이터에 적용합니다.
+train['age_group'] = pd.cut(train['age'], bins=bins, labels=labels, right=False)
+test['age_group'] = pd.cut(test['age'], bins=bins, labels=labels, right=False)
+
+해당 데이터에서는 나이가 아닌 days_birth 생일로부터의 경과일로 주어지기 때문에
+나이를 구하기 위해서 -365로 나눈 값을 통해 나이를 구하고, 연령대 분포를 위해서 10살씩 묶어 카테고리화 하였다.
+
+미리 정의된 bins와 labels를 pd.cut()함수를 이용하여 적용 시키면 된다.
+
+---------------------------------------------------------------------------------------------------------------
+
+Boxplot
+
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.boxplot(x=train['credit'], y=train['income_total'], ax=ax)
+ax.set_title('credit별 평균 수입')
+plt.show()
+
+credit 별로의 평균 수입을 확인하기 위해 박스플랏을 사용
+
+데이터의 중앙값, 사분위수, 이상치 등을 한눈에 파악하기 좋은 도구로 사용.
+대략적인 분포와 이상치를 빠르게 파악할 수 있다.
+여러 그룹간의 데이터 분포를 비교하기 좋으며 중앙값, 사분위수 등의 통계적 특성을 직접 확인할 수 있다.
+
+ax[0].axhline(y=1.3e6, color='red', linestyle='--')
+ax[1].axhline(y=360000, color='purple', linestyle='--')
+
+를 통해 그래프 상에 특정 지점을 넘어가면 이상치(극단치)로 판단하겠다는 것을 표현
+
+---------------------------------------------------------------------------------------------------------------
+
+credit 별 범주형 변수의 분포 확인
+
+# 각 credit별 데이터프레임을 정의합니다.
+train_0 = train[train['credit']==0.0]
+train_1 = train[train['credit']==1.0]
+train_2 = train[train['credit']==2.0]
+
+# 각 credit별 데이터프레임 리스트를 정의합니다.
+train_dfs = [train_0, train_1, train_2]
+title = ['credit 0', 'credit 1', 'credit 2']
+
+# credit별 범주형 변수의 분포를 확인하기 위해 함수를 정의합니다.
+def category_countplot(column):
+    """
+    category_countplot 함수에 입력할 수 있는 범주형 변수는 다음과 같습니다.
+    'gender', 'car', 'reality', 'income_type', 
+    'edu_type', 'family_type', 'house_type', 
+    'flag_mobil', 'work_phone', 'phone', 'email'
+    """
+    fig, ax = plt.subplots(1, 3, figsize=(16, 6))
+
+    for i in range(len(title)):
+        sns.countplot(x=column, data=train_dfs[i], ax=ax[i], order=train_dfs[i][column].value_counts().index)
+        ax[i].tick_params(labelsize=12, rotation=50)
+        ax[i].set_title(title[i])
+        ax[i].set_ylabel('count')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    return ax
+
+# category_countplot 함수에 확인하고자 하는 범주형 변수를 입력하여 credit별 데이터 분포를 확인해보세요.
+col_name = '범주형 변수'
+result_countplot = category_countplot(col_name)
+
+결과, 해당 범주형 변수에 대해서 세개의 플랏이 주어진다. credit 0/1/2
+
+*** 특정 범주형 변수, income_type과 edu_type 에서는 플랏마다 다른 값들이 확인된다. 이 서로 다른 카테고리가 credit 등급과 관련이 있을 수도 있다.
+또한 매우 드물게 나타나는 값들이 있는데 이 값들이 모델 학습에 미치는 영향이 매우 크므로 주의깊게 고려해야 한다.
+모델의 성능을 저해하지 않도록 전처리나 특정 엔지니어링을 고려할 필요가 있다.
+
+flag_mobile은 모두 같은 값을 갖고 있으므로 예측 모델링에 도움이 되지 않기에 제거하는 것이 좋다
+
+---------------------------------------------------------------------------------------------------------------
+
+적은 빈도를 가진 값 분석
+
+# income_type과 edu_type의 각 범주에 대한 빈도를 계산하고, 각 범주명과 해당 빈도를 반환
+income_type_counts = train['income_type'].value_counts()
+edu_type_counts = train['edu_type'].value_counts()
+
+# income_type과 edu_type에서 가장 빈도가 낮은 범주를 가져옴
+last_income_type = income_type_counts.index[-1]
+last_edu_type = edu_type_counts.index[-1]
+
+# 가장 빈도가 낮은 income_type 범주에 대한 income_total의 평균과 중앙값 계산
+last_income_type_mean = train[train['income_type'] == last_income_type]['income_total'].mean()
+last_income_type_median = train[train['income_type'] == last_income_type]['income_total'].median()
+
+# 가장 빈도가 낮은 edu_type 범주에 대한 income_total의 평균과 중앙값 계산
+last_edu_type_mean = train[train['edu_type'] == last_edu_type]['income_total'].mean()
+last_edu_type_median = train[train['edu_type'] == last_edu_type]['income_total'].median()
+
+print(f"income_total의 평균은 {train['income_total'].mean()}, 중앙값은 {train['income_total'].median()}입니다.")
+print('-'*60)
+print(f'{last_income_type}의 income_total 평균값은 {last_income_type_mean}, income_total 중앙값은 {last_income_type_median}입니다.')
+print(f'{last_edu_type}의 income_total 평균값은 {last_edu_type_mean}, income_total 중앙값은 {last_edu_type_median}입니다.')
+
+income_type에서 빈도수가 가장 적은 범주는 student, edu_type에서 빈도수가 가장 적은 범주는academic degree이다.
+
+student의 경우 전체에 대해서 낮은 평균과 높은 중앙값을 보인다. 전체 데이터에 대해서 다소 차이를 보이고, 특정한 분포를 가지고 있음을 의미한다.
+
+academic degree는 평균과 중앙값이 전체에 비해 높고, 그중에서도 중앙값이 평균보다 높은 경향성을 띄고 있다. 그 뜻은 범주 내에 상대적으로 높은 수입을 가진 자들이 분포하고 있음을 의미한다.
+
+두 범주 모두 전체 데이터에 비해 극히 일부에 해당하지만 각 데이터 포인트는 중요한 의미를 담고 있다. 이들이 예측 변수로 모델의 성능 향상에 기여할 수 있다.
+
+따라서 특정 범주를 제거하는 것은 권장되지 않는다.
+
+---------------------------------------------------------------------------------------------------------------
+
+df['columns'].unique() 를 통해 어떤 고유값들이 있는지 확인 가능
+
+---------------------------------------------------------------------------------------------------------------
+
+# 'job_type' 칼럼의 값이 'nan'인 경우에 해당하는 'income_type'의 분포를 확인합니다.
+print('job_type가 nan인 income_type 빈도 확인')
+print(train[train['job_type'] == 'nan']['income_type'].unique())
+
+print('-'*40)
+
+# job_type에서 등장빈도가 낮은 고유값의 비율을 확인하기 위해 num_freq_low 값을 조절합니다.
+# num_freq_low는 등장 빈도가 낮은 job_type 고유값의 개수를 의미합니다.
+num_freq_low = 3
+low_freq_sum = train['job_type'].value_counts()[-num_freq_low:].sum()
+print(f'하위 {num_freq_low} 개의 고유값의 등장빈도는 전체 데이터의 {low_freq_sum / len(train) * 100}% 입니다.')
+
+job_type가 nan인 income_type 빈도 확인
+['Commercial associate' 'Pensioner' 'Working' 'State servant' 'Student']
+----------------------------------------
+하위 3 개의 고유값의 등장빈도는 전체 데이터의 0.6274331934837661% 입니다.
+
+job_type이 nan인 income type에서 하위 세 항목의 비율이 1퍼센트 미만으로 매우 빈도가 낮다.
+따라서 이런 값들을 제외하는 것이 효과적일 수 있다.
+
+또한 job_type값이 결측값인 데이터 중 상당수가 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

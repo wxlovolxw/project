@@ -1,0 +1,350 @@
+
+회귀 분석시의 formula 작성
+
+formula = """
+종속변수 ~ 독립변수1 + 독립변수2 + 독립변수 3...
+"""
+
+다항회귀
+
+import statsmodels.api as sm
+model = sm.OLS.from_formula(formula, data=)
+model = model.fit()
+predict = model.predict(X_valid)
+
+OLS 클래스는 최소자승법을 사용하는 모델이다.
+독립변수와 종속변수간의 관계를 가장 잘 나타내는 회귀선을 추정하는데 사용하며 실제값과 예측값 간의 차이를 최소화
+하는 방향으로 회귀선을 조정한다.
+
+from sklearn.metrics import mean_squared_error
+
+RMSE = mean_squared_erroe(y_valid, predict)**1/2
+
+선형 회귀의 4요소
+
+1) 선형성 - 독립변수x와 종속변수y 간의 선형성을 만족하는 특성을 의미한다.
+    만약 일부가 만족하지 않는다면 변수추가/변수변환/변수 제거 등을 할 수 있다.
+2) 독립성 - 독립변수x들 간에 상관관계가 없이 독립성을 만족한다.
+    다중 공선성을 일으키는 변수를 제거하거나 모아서 다른 변수로 치환할 수 있다.
+3) 등분산성 - 잔차의 분산이 독립변수에 관계없이 일정(고르게 분포)
+4) 정규성 - 잔차가 정규분포를 띄는지(잔차가 정규성을 만족하는지)
+
+이 네가지 사항을 만족해야 유의미한 회귀모델이 나온다.
+
+model.summary()를 통해서 회귀 모델의 통계적 특성을 파악할 수 있다.
+
+R-squared - 결정계수. 회귀식의 설명력을 나타냄(1에 가까울 수록 좋다)
+Adj. R-squared - 데이터에 따라 조정된 결정계수
+
+F-statistic - 0에 가까울수록 적절. 도출된 회귀식이 적절한지 판단
+Prob (F-statistic) - 회귀식이 유의미함을 판단. 0.05이하 일때 변수끼리 관련있다고 판단
+
+AIC - 표본의 개수와 모델의 복잡함을 기준으로 모델을 평가
+BIC - AIC에 페널티를 부여하여 모델을 평가. 두 수치가 낮을수록 좋음
+
+---------------------------------------------------------------------------------------------------------------
+
+막대그래프(histogram)
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+ax = sns.histplot()
+plt.show()
+
+여러 범주간의 값을 비교하기 용이
+크기를 직관적으로 비교. 서로 다른 범주들의 값을 한눈에 파악 가능
+
+---------------------------------------------------------------------------------------------------------------
+
+선그래프(line)
+
+데이터의 변화를 시간순/ 다른 연속변수 에 따라 시각화하는데 사용되는 그래프.
+데이터포인트들을 연결하여 경향성/추세/패턴 을 시각적으로 파악하는데 도움을 준다.
+
+fig,ax = plt.subplot() 으로 그래프를 생성하고 figsize 매개변수를 통해 그래프 크기를 설정한다.
+
+ax.set_xlabel
+ax.set_ylabel
+ax.set_xticts
+
+ax.plot
+ax.legend()
+plt.show()
+
+---------------------------------------------------------------------------------------------------------------
+
+산점도
+
+두 변수간의 상관관계를 확인할 수 있다.
+데이터의 분포와 이상치를 쉽게 파악할 수 있다.
+
+plt.xlim
+plt.ylim
+으로 극단적으로 높은 값을 배제해준다.(범위 제한)
+
+ax.scatter
+plt.show()
+
+산점도를 통해 변수간의 공선성을 확인하고, 공선성이 있다면 두 변수중 하나를 제거해야 한다.
+
+---------------------------------------------------------------------------------------------------------------
+
+중복값
+
+중복값을 제거할 때 drop_duplicates() 메서드를 통해 중복을 제거할 수 있고, 매개변수 keep='last'를 통해 마지막 줄만 남겨둘 수 있다.
+
+---------------------------------------------------------------------------------------------------------------
+
+merge 
+
+sql의 join과 유사하다
+
+merge ( how = left/right/inner , on = 조건)
+
+---------------------------------------------------------------------------------------------------------------
+
+to_datetime() 함수는 날짜 및 시간 정보가 포함된 문자열을 날짜/시간 형식으로 변환한다.
+
+dt는 판다스 라이브러리에서 제공하는 날짜/시간 데이터를 다루는 기능을 포함한 접근자로
+dt.year을 통해 연도를 추출할 수 있다.
+
+---------------------------------------------------------------------------------------------------------------
+
+원 핫 인코딩
+
+범주형 데이터를 숫자형으로 변환하는 방법중 하나
+범주형 데이터는 일반적으로 텍스트 형식이며, 각 범주에 대해 이진 변수를 생성하는 방식으로 동작한다. 해당하면 1 아니면 0과 같이
+생성된 이진 변수들은 서로 상호 독립적이며, 하나의 1만 존재할 수 있다.( 한 행에 대해서 1이 하나만 존재할 수 있는 매트릭스)
+
+OneHotEncoder 객체를 생성
+fit() 매서드를 사용하여 특정 열에 대해 원 핫 인코딩을 학습
+transform() 메서드를 사용하여 데이터를 원핫인코딩이 완료된 ndarrary 형태로 반환
+
+ndarray 형태로 반환된 데이터 onehot_data에 pd.DataFrame() 함수를 사용하여 데이터프레임 생성
+
+원래의 데이터 프레임과 concat을 통해 원핫인코딩이 적용된 데이터 프레임 생성
+
+기존 컬럼을 삭제
+
+from sklearn.perprocessing import OneHotEncoder
+
+ohe = OneHotEncoder(sparse_output=False)
+ohe.fit(df['column'])
+onehot_data = ohe.transform(df[['column']])
+onehot_frame = pd.DataFrame(onehot_data, columns=ohe.categories_[0])
+
+train_result = pd.concat([train_result,onehot_frame], axis = 1)
+
+train_result = train.result.drop(['column'], axis = 1)
+
+* fit과 transform을 동시에 진행할 때에는 fit_transform을 사용할 수 있다.
+
+---------------------------------------------------------------------------------------------------------------
+
+라벨 인코딩
+
+원핫 인코딩과 유사하게 범주형 데이터를 숫자형으로 변환하는 방법 중 하나이다.
+원핫 인코딩은 0과 1로만 이루어진 행렬을 만들지만
+라벨 인코딩은 한 컬럼 내에서의 값들을 0,1,2,3등의 형태로 라벨링하는 방법이다
+
+이러한 인코딩은 모두 모델 학습시에 사용되기 때문에 매우 중요하다.
+
+이때 주의할 점은 라벨 인코딩에서의 0,1,2,3은 우선도나 값의 크기를 의미하는 것이 아니라는 것을 인지해야 한다.
+또한 원핫 인코딩은 컬럼수가 급격히 많아지는 문제가 발생하기도 한다.(주로 신경망/선형 모델에서 사용)
+
+from sklearn.preprocessing import LabelEncoder
+
+label_col = ['Auction_class', 'addr_do', 'addr_san', 'Share_auction_YorN', 'Auction_results_left', 'Apartment_usage']
+
+for label in label_col:
+    le = LabelEncoder()
+    train_result[label] = le.fit_transform(train_result[label])
+    
+라벨 인코딩을 진행할 컬럼들을 모아서 리스트를 생성하고 for문을 통해 한번에 라벨링을 진행한다
+
+---------------------------------------------------------------------------------------------------------------
+
+결측치 isnull()을 통해 확인
+fillna()를 통해 채워줄 수 있다.
+이때 최빈값을 사용하고 싶다면 value_counts().index[0]을 사용하면 된다.
+
+---------------------------------------------------------------------------------------------------------------
+
+values 속성을 통해 값을 할당할 수 있다.
+
+appraisal_min = result.groupby('Auction_key')['Appraisal_price'].min()
+를 통해서 Auction_key별로의 Appraisal_price최소값을 저장하고, 이 값들을 need_merge데이터 프레임 ['appraisal_min'] 컬럼에 저장한다.
+need_merge['appraisal_min'] = appraisal_min.values
+
+---------------------------------------------------------------------------------------------------------------
+
+pivot_table
+
+기존의 데이터 프레임을 새로운 형태의 피벗 테이블을 생성한다.
+df.pivot_table(index = '', columns = '', values = '', aggfun = '')
+aggfunc을 통해 사용할 집계함수를 지정하면 된다.
+
+---------------------------------------------------------------------------------------------------------------
+
+sort_values를 통해 차순
+
+---------------------------------------------------------------------------------------------------------------
+
+train['Final_auction_date'] = pd.to_datetime(train['Final_auction_date'], errors = 'ignore')
+train['year'] = train['Final_auction_date'].dt.year
+date_col = ['Appraisal_date', 'First_auction_date', 'Final_auction_date', 'Preserve_regist_date', 'Close_date']
+train = train.drop(date_col, axis= 1)
+
+to_datetime을 통해 datetime 자료형으로 변환. errors = 'ignore'
+dt.year을 통해 년도를 추출
+나머지 시간 관련 컬럼들을 묶은 후 drop을 통해 한번에 열 제거
+
+---------------------------------------------------------------------------------------------------------------
+
+메모리 확보
+
+import gc
+
+del need_merge
+del auction_result
+del train_result
+
+gc.collect()
+
+불필요한 데이터 프레임을 삭제하고 메모리를 해제하기 위해 사용.
+del 키워드를 사용해 변수를 삭제하고 
+
+gc.collect() 함수를 호출하여 가비지 컬렉션을 수행한다.
+더이상 사용되지 않는 객체들을 정리함으로서 메모리를 확보할 수 있다.
+
+---------------------------------------------------------------------------------------------------------------
+
+XGBoost
+
+extreme gradient boosting은 그래디언트 부스팅 트리 알고리즘을 기반으로한 머신러닝 모델
+대용량의 데이터에 대해 뛰어난 예측 성능과 빠른 학습 속도를 제공함
+
+앙상블 기법중 하나인 그래디언트 부스팅 트리 알고리즘을 사용 - 이전트리의 오차를 최소화하는 새로운 트리를 구성하여 예측 성능을 향상
+여러개의 결정 트리를 조합하여 예측 모델을 구성하는데 각 트리는 이전 트리의 오차를 보완하도록 학습. 이를 통해 복잡한 비선형 관계를 모델링함
+트리가 너무 깊어지면 과적합의 가능성 발생. 가지치기를 통해 적절한 깊이를 유지하여 모델의 일반화 성능을 향상시킴
+L1 규제(Lasso)와 L2 규제(Ridge) 를 동시에 적용하여 복잡성을 제어, 과적합을 방지하고 일반화 성능을 향상
+
+from xgboost import XGBRegressor / XGBoost 라이브러리에서 XGBRegressor 모듈을 호출
+
+xgb = XGBRegressor(random_state = 42) / xgb 변수에 저장
+xgb.fit(x_train, y_train) / 모델 학습
+valid_pred = xgb.predict(x_valid) / 검증데이터에 대한 예측값을 얻음
+
+from sklearn.metrics import mean_squared_error
+mean_squared_error(y_valid, valid_pred, squared = False)
+
+RMSE 오차를 계산
+
+---------------------------------------------------------------------------------------------------------------
+
+그리드 서치
+
+그리드 서치는 머신 러닝 모델의 최적 매개변수 조합을 찾기 위해 사용되는 하이퍼파라미터 튜닝 기법이다.
+머신러닝 모델은 여러개의 하이퍼파라미터를 가지며, 하이퍼파라미터들은 모델의 성능에 영향을 준다
+
+그리드 서치는 가능한 모든 조합을 탐색하여 최적의 조합을 찾는다
+만약 하이퍼파라미터가 x4개 y4개라면 16개의 조합에 대해서 탐색을 한다.
+
+시간이 많이 소요될 수 있고 주어진 매개공간 내에서만 탐색하기에 최적의 조합이 나온다는 보장이 없다.
+매개변수 공간을 잘 설정하는 것이 주용하다.
+
+from sklearn.model_selection import GridSearchCV
+
+xgb_grid = XGBRegressor(random_state = 42) / XGBRegressor 객체 생성 및 xgb_grid에 저장
+
+params = {'n_estimators': [15, 30],
+          'max_depth': [3, 8]} / 매개변수를 설정하기 위해 params 변수에 딕셔너리의 형태로 값을 지정
+
+greedy_CV = GridSearchCV(xgb_grid, param_grid=params, cv = 2, n_jobs = -1) / GridSearchCV 객체 생성 교차검증횟수는 2
+greedy_CV.fit(x_train, y_train) / fit을 통해 학습
+
+n_jobs는 사용할 코어수. -1로 설정하면 모든 코어를 사용
+
+xgb_best_model = greedy_CV.best_estimator_ / best_estimator_는 최적의 매개변수 조합으로 학습된 XGBoost 모델을 반환
+valid_pred = xgb_best_model.predict(x_valid)
+mean_squared_error(y_valid, valid_pred, squared = False)
+
+---------------------------------------------------------------------------------------------------------------
+
+train.info()를 통해 결측치를 확인했을때,
+결측치가 채워졌다고 해서 결측치가 없는것이 아닐 수 있다. 결측일시 0의 값으로 대체됐을 경우가 있으므로 유의해야 한다.
+
+---------------------------------------------------------------------------------------------------------------
+
+value_counts를 통해 개수를 구할때 normalize=True를 통해 비율을 확인할 수 있다.
+-> pie 차트를 통해 시각화
+
+fig, ax = plt.subplot(figsize=(,))
+
+credit_freq = train['credit'].value_counts()
+
+ax.pie(credit_freq, labels = , autopct='') / autopct를 통해 어느자리수 까지 표현할지.
+plt.title('', size=)
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
