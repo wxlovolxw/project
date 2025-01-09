@@ -197,47 +197,740 @@ low_freq_sum = train['job_type'].value_counts()[-num_freq_low:].sum()
 print(f'하위 {num_freq_low} 개의 고유값의 등장빈도는 전체 데이터의 {low_freq_sum / len(train) * 100}% 입니다.')
 
 job_type가 nan인 income_type 빈도 확인
-['Commercial associate' 'Pensioner' 'Working' 'State servant' 'Student']
+Pensioner               4440
+Working                 2312
+Commercial associate    1026
+State servant            392
+Student                    1
+Name: income_type, dtype: int64
 ----------------------------------------
 하위 3 개의 고유값의 등장빈도는 전체 데이터의 0.6274331934837661% 입니다.
 
 job_type이 nan인 income type에서 하위 세 항목의 비율이 1퍼센트 미만으로 매우 빈도가 낮다.
 따라서 이런 값들을 제외하는 것이 효과적일 수 있다.
 
-또한 job_type값이 결측값인 데이터 중 상당수가 
+또한 job_type값이 결측값인 데이터 중 상당수가 pensioner(연금 수령자) 인 것으로 확인된다.
+연금 수령자는 직업이 없이 노후를 맞이하여 일을 하지 않기 때문에 job_type을 특정 카테고리고 대체하는 것이 합리적일 수 있다.
+
+income_type이 pensioner인 고객들의 나이 분포를 시각화 하여 보니 55세에서 65세 까지가 가장 많은 분포를 띄고 있다.
+50세 미만의 연금 수령자도 존재하는데, 특별한 상황(장애/사고) 등으로 조기 연금을 받는 경우일 수 있다.
+
+이러한 관찰을 통해 job_type이 결측치 이고, income_type이 pensioner인 고객들의 job_type을 no_job으로 대채하는 것이 타당하다고 판단하였다.
+
+---------------------------------------------------------------------------------------------------------------
+
+# 'job_type' 결측값의 수를 확인합니다.
+print('결측값 대체 전 job_type의 결측값의 수는 ',len(train[train['job_type'] == 'nan']), '개 입니다.')
+
+# 등장 빈도가 낮은 job_type을 배제하기 위한 기준 값을 n으로 설정합니다.
+# n은 1이상의 정수로 설정해주세요.
+n = 3 / 3개의 등장 빈도가 낮은 job_type을 배제하기로 결정(전체에 대한 비율이 0.6%으로 매우 낮기 때문)
+
+# 'job_type'의 각 범주별 등장 빈도를 확인합니다.
+job_type_counts = train['job_type'].value_counts()
+
+# 등장 빈도가 낮은 하위 n개의 'job_type' 범주를 선택합니다.
+exclude_job_types = job_type_counts.tail(n).index.tolist() / 3개의 항목을 리스트로
+
+# 결측치와 등장빈도가 낮은 job_type을 제외하고 각 job_type에 대해 'income_total'의 평균을 계산합니다.
+mean_values = train[(train['job_type'] != 'nan') & (~train['job_type'].isin(exclude_job_types))].groupby('job_type')['income_total'].mean()
+
+# 'job_type' 값이 'nan'인 각 행에 대해 반복합니다. / idxmin()은 최소값의 인덱스를 반환하는 함수이다.
+for idx, row in train[train['job_type'] == 'nan'].iterrows(): / iterrows() 데이터 프레임의 각 행에 대해서 적용
+    # 각 job_type의 평균값과의 차이 계산
+    differences = abs(mean_values - row['income_total'])
+    
+    # 차이가 가장 작은 job_type을 선택합니다.
+    closest_job_type = differences.idxmin()
+    
+    # 현재 행의 'job_type' 값을 가장 가까운 job_type으로 대체합니다.
+    train.at[idx, 'job_type'] = closest_job_type
+    
+# 대체 후 'job_type'의 결측값 수를 다시 확인합니다.
+print('결측값 대체 후 job_type의 결측값의 수는 ',len(train[train['job_type'] == 'nan']), '개 입니다.')
+
+빈도수가 낮은 job_type을 배제한 상태에서 나머지 job_type들의 income_total 평균값을 계산한다.
+
+그 다음 job_type이 nan인 각 행에 대해서, 그 행의 income_total값과의 각 job_type들의 income_total 평균값들을 비교한 뒤,
+그 차이가 가장 작은 job_type으로 해당 결측치를 대체하였다.
+
+---------------------------------------------------------------------------------------------------------------
+
+이진 범주형 칼럼 값 인코딩하기 -> 레이블 인코딩
+
+binary_col = ['gender', 'car', 'reality']
+
+for column in binary_col:
+    unique_values = train[column].unique()
+    value_mapping = {value: idx for idx, value in enumerate(unique_values)}
+    
+    train[column] = train[column].replace(value_mapping)
+    test[column] = test[column].replace(value_mapping)
+    
+train[binary_col].head()
+
+이진 범주형 칼럼에서 고유값들을 추출한 뒤 unique_values 변수에 저장한다.
+
+enumerate(unique_values) 함수를 사용하여 idx, value인 {값: 인덱스} 형태로 인덱스와 고유값의 쌍을 딕셔너리에 저장한다.
+repalce()를 통해 고유값을 인덱스의 값으로 변환한다.
+
+범주형 인코딩
+
+# 학력 순서 정의
+edu_order = ['Lower secondary', 'Secondary / secondary special', 'Incomplete higher', 'Higher education', 'Academic degree']
+
+# 학력 순서에 따른 인코딩 딕셔너리 생성
+edu_mapping = {edu: idx for idx, edu in enumerate(edu_order)}
+
+# 인코딩 수행
+train['edu_type_encoded'] = train['edu_type'].replace(edu_mapping)
+test['edu_type_encoded'] = test['edu_type'].replace(edu_mapping)
+
+# 결과 확인
+display(train[['edu_type', 'edu_type_encoded']].drop_duplicates().reset_index(drop = True))
+
+학력의 경우는 순서에 따른 의미가 존재한다. 학력 순서에 맞게끔 edu_order 리스트에 정의하고, 
+그에 맞는 인덱스를 지정해 주면 된다.
+
+Lower secondary : 0, Secondary : 1, Incomplete higher : 2, Higher education : 3, Academic degree : 4
+의 순이다.
+
+---------------------------------------------------------------------------------------------------------------
+
+바이너리 인코딩
+
+원핫인코딩과 유사한 방법이지마, 훨씬 적은 수의 칼럼을 생성한다.
+예를 들어 7개의 범주를 가진 칼럼을 원핫인코딩 했을때 7개의 컬럼이 생성되지만, 
+바이너리 인코딩은 3개의 칼럼만 필요하다. 001 010 011 100 101 110 111 로 2진법을 통해 표현하는 것이다.
+데이터셋에 순서를 가지지 않으면서 범주가 여러개 존재하는 칼럼이 있을 때 차원의 크기를 줄이면서 정보를 유지할 수 있다.
+
+import category_encoders as ce
+
+print(f"job_type 칼럼의 고유값의 개수는 {train['job_type'].nunique()}개 입니다.")
 
 
+# 선택할 범주형 칼럼들
+categorical_cols = train.select_dtypes(include='object').columns.tolist() / select_dtypes() 매서드를 통해 자료형이 object인 칼럼을 가져온다. 그리고 tolist를 통해 categorical_cols에 리스트의 형태로 저장한다.
+
+# BinaryEncoder 초기화
+encoder = ce.BinaryEncoder(cols=categorical_cols)
+
+# 학습 데이터에 대해 fit_transform을 사용하여 인코딩
+binary_train = encoder.fit_transform(train[categorical_cols])
+
+# 테스트 데이터에 대해 transform을 사용하여 인코딩
+binary_test = encoder.transform(test[categorical_cols]) / train 셋에 대해서만 fit_transform을 사용하고, test 셋에 대해서는 transform만 해준다.
+
+# 인코딩된 데이터를 원래 데이터에 추가
+train = pd.concat([train, binary_train], axis=1)
+test = pd.concat([test, binary_test], axis=1)
+
+# 원본 범주형 칼럼 삭제
+train.drop(categorical_cols, axis=1, inplace=True)
+test.drop(categorical_cols, axis=1, inplace=True)
+
+# 예시 - job_type 칼럼에 대해 몇 개의 칼럼이 생성되었는지 확인
+created_job_type_num = 0
+for i in train.columns:
+    if 'job_type' in i:
+        created_job_type_num += 1
+print(f"job_type 칼럼에 바이너리 인코딩을 적용한 결과 {created_job_type_num}개의 칼럼이 생성되었습니다.")
+
+train.head()
+
+---------------------------------------------------------------------------------------------------------------
+
+RandomForest 모델을 사용한 Stratified K-Fold 교차 검즘
+
+from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import log_loss
+
+# 데이터 나누기
+copy_train = train.copy()
+train_data, valid_data = train_test_split(copy_train, stratify=copy_train['credit'], test_size=0.2, random_state=42)
+
+*  stratify=copy_train['credit'] credit 피처의 분포를 동일하게 유지하기 위해 사용
+
+x_train = train_data.drop('credit', axis=1)
+y_train = train_data['credit']
+x_valid = valid_data.drop('credit', axis=1)
+y_valid = valid_data['credit']
+
+# K-Fold 설정
+skf = StratifiedKFold(n_splits=4, shuffle=True, random_state=42) 
+
+* n_splits = 4 / 4겹의 교차 검증을 실행
+shuffle = True / 데이터를 임의로 섞이 위한 옵션
+
+log_losses = [] / log_loss() 함수를 이용하여  logloss를 계산
+
+for train_idx, valid_idx in skf.split(x_train, y_train):
+    x_train_fold, x_valid_fold = x_train.iloc[train_idx], x_train.iloc[valid_idx]
+    y_train_fold, y_valid_fold = y_train.iloc[train_idx], y_train.iloc[valid_idx]
+
+    model = RandomForestClassifier(n_estimators=50, random_state=42)
+    model.fit(x_train_fold, y_train_fold)
+    
+    pred_probs = model.predict_proba(x_valid_fold)
+    log_losses.append(log_loss(y_valid_fold, pred_probs))
+
+average_log_loss = sum(log_losses) / len(log_losses)
+print(f"평균 Log Loss의 값 : {average_log_loss}")
+
+평균 Log Loss의 값 : 1.193436676150756
+
+베이스 라인의 역할 -> 이후 진행되는 모든 개선 사항들의 효과를 평가하는 기준으로서 사용
+
+각 단계에서 변경 사항은 검증 점수를 통해 평가되며, 해당 방법의 적용 여부를 결정한다.
+
+검증을 위해 사용하는 모델은 RandomForest 이며, k-fold 검증 방법을 이용한다.
+데이터를 k개의 부분집합으로 나누고, 각 부분집합을 검증데이터로 사용하는 동안 나머지 부분집합을 학습데이터로 사용하여 모델을 k번 학습 및 검증하는 방법이다.
+모델의 일반화 성능을 평가하는데 주로 사용된다.
+
+*** 검증에 사용될 기본 모델을 구축할 때, 스케일링을 진행하지 않는 것이 좋다.
+데이터의 원래 분포와 범위를 변경시키는 과정이기 때문에 이를 통해 얻은 모델의 성능이 직관적으로 이해하기 어려울 수 있다.
+기본 모델은 원래 상태에서 얼마나 잘 작동하는지 확인하는 것이 주 목적이기 때문에 스케일링 없이 하는것이 바람직하다.
+
+랜덤포레스트는 결정트리를 기반으로 하는 앙상블 학습 알고리즘이다.
+스케일링을 통해 값의 범위가 변경되어도 구조 자체에는 영향을 주지 않는다.
+따라서 트리 기반 모델을 사용할때 스케일링을 사용하지 않고 모델을 학습한다.
+여러 개의 결정 트리를 독립적으로 학습하여 최종 예측값을 도출
+분류/화귀 문제 모두 사용가능
+결측값 처리, 비선형 관계 학습등에도 강하다
+많은 트리를 앙상블로 학습하기 떄문에 단일 결정 트리보다 과적합에 강하다
 
 
+다중 로그 손실은 예측의 정확성을 평가하는 지표 중의 하나로 예측한 확률의 불확실성을 측정한다.
+로그 손실은 예측 확률과 실제 결과 간의 차이를 기반으로 하며 예측이 정확할 수록 로그 손실 값이 작아진다.
+로그 손실은 단순한 정확도 보다 더 깊은 차원에서 예측의 정확성과 확신도를 함께 평가하는 지표이다.
+'내가 얼마나 확신하고 예측했는지' 와 '확신이 얼마나 정확했는지'를 측정하는 지표이다
+
+---------------------------------------------------------------------------------------------------------------
+
+family_size 컬럼의 값이 6이상인 값들을 5로 대체하고 검증 점수를 확인한 결과, 
+
+copy_train['family_size'] = copy_train['family_size'].apply(lambda x: 5 if x >= 6 else x)
+
+평균 Log Loss의 값 : 1.1830073558533702
+
+---------------------------------------------------------------------------------------------------------------
+
+나이의 구간화를 적용한 검증 결과 확인
+
+# train 데이터를 기반으로 bins를 생성합니다.
+min_age = x_train['age'].min()
+max_age = x_train['age'].max()
+bins = list(range(min_age - 10, max_age + 10, 10))
+labels = range(len(bins)-1)
+
+# 생성된 bins를 train과 test 데이터에 적용합니다.
+x_train['age_group'] = pd.cut(x_train['age'], bins=bins, labels=labels, right=False)
+x_valid['age_group'] = pd.cut(x_valid['age'], bins=bins, labels=labels, right=False)
+
+평균 Log Loss의 값 : 1.2492426042067344
+
+긍정적이지 않은 결과를 얻었다.
+
+---------------------------------------------------------------------------------------------------------------
+
+특성 공학의 적용
+
+before_employed 고용되기 전까지의 총 일수를 나타낸다 -> 개인의 경력이 얼마나 긴지 짧은지 파악 가능
+employed_year 근속연수를 나타낸다 -> 일반적으로 근속연수가 길면 소득의 안정성이 높다고 판단, 신용도 예측에 도움이 될 수 있다.
+imcome_by_employed_year 근속일수별로 1일달 얼마늬 수입을 버는지 -> 개인의 수입 효율성. 근속일수 대비 높은 수익을 번다면 신용도가 높을 가능성이 있다.
+근속일수가 0인경우 0으로 설정
+
+imcome_by_family 가족 1인당 얼마의 소득을 버는지 -> 가족 당 소득이 높을수록 가계의 경제적 안정성이 높다고 판단
+
+이러한 공학 기법들을 적용한 후 모델의 성능을 확인하는 것은 반복적이며 유사하다.
+이를 매번 수동으로 작성하는 것은 비효율적이며, 코드의 가독성과 유지 보수성을 저해한다.
+
+이를 해결하기 위해 함수를 사용할 수 있다.
+
+get_log_loss() 함수를 정의하여 모델의 성능을 일관되게 평가할 수 있다.
+
+def get_log_loss(df):
+    copy_train = df.copy()
+    # 피처엔지니어링을 한 피처 외 다른 피처가 입력되었는지 확인합니다.  
+    print(copy_train.columns[-2:])
+    train_data, valid_data = train_test_split(copy_train, stratify=copy_train['credit'], test_size=0.2, random_state=42)
+
+    x_train = train_data.drop('credit', axis=1)
+    y_train = train_data['credit']
+
+    skf = StratifiedKFold(n_splits=4, shuffle=True, random_state=42)
+    log_losses = []
+
+    for train_idx, valid_idx in skf.split(x_train, y_train):
+        x_train_fold, x_valid_fold = x_train.iloc[train_idx], x_train.iloc[valid_idx]
+        y_train_fold, y_valid_fold = y_train.iloc[train_idx], y_train.iloc[valid_idx]
+
+        model = RandomForestClassifier(n_estimators=50, random_state=42)
+        model.fit(x_train_fold, y_train_fold)
+
+        pred_probs = model.predict_proba(x_valid_fold)
+        log_losses.append(log_loss(y_valid_fold, pred_probs))
+
+    average_log_loss = sum(log_losses) / len(log_losses)
+    return average_log_loss
+   
+
+# 순서대로 고용되기 전까지의 일수, 근속연수, 근속일별 소득, 가족 수 대비 소득
+fe_features = [
+    ('before_employed', lambda df: df['days_employed'] - df['days_birth']),
+    ('employed_year', lambda df: df['days_employed'] // 365),
+    ('income_by_employed_days', lambda df: df.apply(lambda row: 0 if row['days_employed'] == 0 \
+                                        else row['income_total'] / row['days_employed'], axis=1)),
+    ('income_by_family', lambda df: df['income_total'] / df['family_size'])
+]
+
+for feature_name, feature_func in tqdm(fe_features):
+    train[feature_name] = feature_func(train)
+    log_loss_score = get_log_loss(train)
+    print(f"{feature_name} 추가 후의 로그손실 점수: {log_loss_score}")
+    
+    # 하나의 칼럼을 추가했을 때 그 결과를 확인하기 위해 drop() 메서드 사용
+    # drop() 메서드를 사용하지 않을 경우 네 가지의 피처를 하나씩 순차적으로 데이터프레임에 추가
+    train = train.drop(feature_name, axis = 1)
+
+--------------------------------------------
+
+  0%|          | 0/4 [00:00<?, ?it/s]
+Index(['job_type_4', 'before_employed'], dtype='object')
+ 25%|██▌       | 1/4 [00:05<00:15,  5.24s/it]
+before_employed 추가 후의 로그손실 점수: 1.2337484726861612
+Index(['job_type_4', 'employed_year'], dtype='object')
+ 50%|█████     | 2/4 [00:10<00:09,  4.97s/it]
+employed_year 추가 후의 로그손실 점수: 1.2263545606665827
+Index(['job_type_4', 'income_by_employed_days'], dtype='object')
+ 75%|███████▌  | 3/4 [00:15<00:05,  5.13s/it]
+income_by_employed_days 추가 후의 로그손실 점수: 1.1841257841834645
+Index(['job_type_4', 'income_by_family'], dtype='object')
+100%|██████████| 4/4 [00:20<00:00,  5.06s/it]
+income_by_family 추가 후의 로그손실 점수: 1.2659603089757085
+
+베이스 라인 모델로 검증한 로그 손실 점수는 약 1.1934였고, 
+개선된 항목은 income_by_employed_days를 적용 했을때 1.1841이였다.
+
+따라서 income_by_employed_days 피처가 모델의 성능 향상에 긍정적으로 작용한다는 것을 알 수 있고,
+나머지 세 피처는 최종 모델링에서 제외하는 것이 좋다는 결론을 내릴수 있다.
+
+---------------------------------------------------------------------------------------------------------------
+
+성별기반 소득보정 및 KMenas 클러스터링을 이용한 특성 공학 및 모델 평가
+
+from sklearn.cluster import KMeans
+
+gender_income_mean = train.groupby('gender')['income_total'].mean()
+weight = gender_income_mean[1] / gender_income_mean[0]  # 1: 남성, 0: 여성
+
+/ 남성의 평균 소득을 여성의 평균 소득으로 나누어 보정 가중치를 구한다.
+
+cluster_gender_features = [
+    ('adjusted_income', 
+     lambda df: df.apply(
+         lambda row: row['income_total'] * weight 
+         if row['gender'] == 0 else row['income_total'], axis=1
+     )),
+     / gender가 0인 경우(여성) 가중치를 곱해주고, 그렇지 않은 경우 income_total을 그대로 반환한다.
+     
+    ('cluster', 
+     lambda df: KMeans(n_clusters=100, n_init=10, random_state=42)
+     .fit(df.drop(['credit'], axis=1))
+     .predict(df.drop(['credit'], axis=1)))
+]
+    / KMeans() 클래스를 인스턴스화하면서 클러스터의 개수, 초기화 횟수, 랜덤 시드를 설정한다.
+    fit()을 통해 학습, predict()를 통해 인덱스를 반환
+
+for feature_name, feature_func in tqdm(cluster_gender_features):
+    train[feature_name] = feature_func(train)
+    log_loss_score = get_log_loss(train)
+    print(f"{feature_name} 추가 후의 로그손실 점수: {log_loss_score}")
+    
+    train = train.drop(feature_name, axis = 1)
+
+    / 마찬가지로 get_log_loss() 함수로 평가
+
+-------------------------------------------------
+
+  0%|          | 0/2 [00:00<?, ?it/s]
+Index(['job_type_4', 'adjusted_income'], dtype='object')
+ 50%|█████     | 1/2 [00:05<00:05,  5.07s/it]
+adjusted_income 추가 후의 로그손실 점수: 1.2208875409113773
+Index(['job_type_4', 'cluster'], dtype='object')
+100%|██████████| 2/2 [00:12<00:00,  6.11s/it]
+cluster 추가 후의 로그손실 점수: 1.2226948549643328
+
+KMeans 클러스터링은 비지도 학습 방법 중 하나로, 데이터 포인트들을 유사한 특징을 가진 그룹으로 나누는 알고리즘이다
+이 코드에서 KMeans를 사용하여 데이터를 100개의 클러스터로 나눈뒤, 각 데이터 포인트가 어떤 클러스터에 속하는지를 나타내는 새로운 피처를 생성
+기본적으로 데이터 간의 거리를 기반으로 그룹화 하는 것이 목적
+스케일링한 수에 클러스터링을 수행하는 것이 권장
+
+cluster피처를 추가했을 때의 로그 손실 점수는 베이스 라인보다 낮고, adjusted_income을 추가했을때는 베이스 라인보다 높았기 때문에
+cluster 피처만을 사용하기로 한다.
+
+---------------------------------------------------------------------------------------------------------------
+
+데이터 스케일링
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from scipy.stats import boxcox
+
+# 정규분포 변환
+# optimal_lambda는 최적의 람다값을 의미함 -> 모델이 자동으로 최적의 람다를 계산하여 반환
+# optimal_lambda를 사용하여 test 데이터에 대해 box-cox 변환을 할 경우 데이터 누수 없이 변환할 수 있음
+train['income_total'], optimal_lambda = boxcox(train['income_total'])
+test['income_total'] = boxcox(test['income_total'], lmbda = optimal_lambda)
+
+*** train['income_total']은 변환하려는 학습데이터
+변환 데이터를 람다(optional_lambda)로 반환(해당 데이터를 가장 정규분포에 가깝게 만드는 람다값)
+
+그리고 아래에서는 테스트셋에 대해서도 같은 람다를 이용하여 정규분포로 변환하는 과정이다
+(테스트에 대해서도 람다를 계산하면 과적합의 우려가 있다)
 
 
+# box-cox 변환 후 분포 확인
+plt.hist(train['income_total'])
+plt.show()
+
+# 훈련 데이터에서 target 칼럼인 'credit' 제외
+x_train = train.drop('credit', axis=1)
+y_train = train['credit']
+
+column_list = x_train.columns
+
+# 스케일링
+scaler = StandardScaler() / 데이터를 표준화해준다.(평균을 0, 표준편차를 1로) -> 이와 유사한 RobustScaler가 있다
+x_train_scaled = pd.DataFrame(scaler.fit_transform(x_train), columns = column_list)
+x_test_scaled = pd.DataFrame(scaler.transform(test), columns = column_list)
+
+x_train_scaled.head()
 
 
+*** Boxcox변환과 StandardScaler()
+전체 데이터의 스케일을 조정하여 정규분포에 가깝게.
+이상치의 영향력을 축소하면서도 데이터의 스케일을 균일하게 유지하는데 도움을 준다
 
+Boxcox 변환으로 데이터의 분포를 정규분포에 가깝게 만들고, StandardScaler을 통해 표준분포(평균0, 표준편차 1)로 변환하여
+표준정규 분포와 유사한 형태를 갖게 된다.
 
+---------------------------------------------------------------------------------------------------------------
 
+* RobustScaler와 StandardScaler의 차이
 
+데이터 변환 방식과 이상치에 대한 민감성이 다르다
 
+StandardScaler -> 평균이 0, 표준편차가 1이 되도록 한다. 이상치의 영향을 많이 받아 이상치가 많을수록 스케일링 결과가 왜곡될 수 있다.
 
+RobustScaler와 -> 중앙값을 0, IQR(Q3-Q1)을 1이 되도록 한다. 이상치의 영향을 줄이고, 이상치가 있더라도 스케일링 결과가 크게 왜곡되지 않는다
 
+---------------------------------------------------------------------------------------------------------------
 
+오버샘플링 방법 선택하기
 
+클래스 간의 데이터 수가 크게 차이나는 경우, 모델이 다수 클래스에 편향되어 제대로 학습하지 못할 수 있다.
+오버샘플링은 소수 클래스의 데이터 양을 인위적으로 증가시켜 클래스간의 균형을 맞춘다.
+방법으로는 다음 세가지가 있다.
 
+1) 복제 - 소수 클래스 데이터를 단순 복제 -> 다양성이 부족하여 과적합의 위험이 있다.
 
+2) SMOTE - 소수 클래스의 데이터 샘플 사이를 선형보간하여 새로운 데이터를 생성. 데이터의 다양성을 높이는데 유리하다.
+        소수의 클래스의 데이터 포인트를 선택하고 해당 데이터 포인트의 k-최근접 이웃 중 하나를 무작위로 선택한다
+        선택된 두 데이터 포인트 사이의 선분상에 위치하는 가상의 데이터 포인트를 생성하고 소수 클래스이 데이터를 합성하여 균형을 맞춘다
+        소수 클래스 주변의 공간을 확장시키기 때문에, 과적합 위험이 줄어든다.
+        잘못된 합성 데이터를 생성할 수 있기 때문에 주의해야 한다.
 
+3) ADASYN - SMOTE의 변형으로 소수 클래스 중에서도 학습하기 어려운 영역에 더 많은 데이터를 생성한다.
+        SMOTE와 유사하지만 소수 클래스 데이터 주변의 데이터 밀도에 따라 합성 데이터를 생성
+        즉, 소수 클래스 데이터 포인트 주변의 다수 클래스 데이터 포인트가 많을수록 더 많은 합성 데이터를 생성
+        불균형이 심한 영역에 더 많은 주의를 기울여, 모델이 더 잘 학습하도록 돕는다.
+        ADASYN은 합성 데이터 생성 시 노이즈를 추가할 수 있기때문에, SMOTH보다 더 다양한 합성 데이터를 생성할 수 있다.
 
+이를 통해 소수 클래스 데이터를 보강하여 모델의 성능을 향상시킬 수 있다. 소수 클래스에 대한 학습이 충분히 이루어지도록 도와준다.
+단점으로는 데이터를 인위적으로 생성하는 것이기 때문에 현실성을 잃을 수 있으며 과적합의 가능성이 있다.
 
+또다른 대안으로는 다수 데이터를 줄여 균형을 맞출 수 있다.(언더샘플링) 하지만 중요한 정보를 잃을 수 있다는 단점이 있다.
 
+데이터 불균형 문제를 해결하기 위해 다양한 오버샘플링 방법 중 SMOTE와 ADASYN 기법을 사용하여 각각의 검증 점수를 확인해보자
 
+from imblearn.over_sampling import SMOTE, ADASYN
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import log_loss
 
+# 데이터 분리: 학습 데이터와 검증 데이터
+X_train_split, X_val_split, y_train_split, y_val_split = train_test_split(x_train_scaled, y_train, test_size=0.2, random_state=42)
 
+# SMOTE를 사용한 오버샘플링
+smote = SMOTE(random_state=42)
+X_train_smote, y_train_smote = smote.fit_resample(X_train_split, y_train_split)
 
+# ADASYN을 사용한 오버샘플링
+adasyn = ADASYN(random_state=42)
+X_train_adasyn, y_train_adasyn = adasyn.fit_resample(X_train_split, y_train_split)
 
+# RandomForest 분류기 학습 및 검증 -> 샘플링된 데이터로 각각 RandomForestClassifier 모델을 학습 시킨다.
+smote_rf = RandomForestClassifier(random_state=42)
+adasyn_rf = RandomForestClassifier(random_state=42)
 
+# SMOTE
+smote_rf.fit(X_train_smote, y_train_smote)
+smote_proba = smote_rf.predict_proba(X_val_split)
+smote_logloss = log_loss(y_val_split, smote_proba)
 
+# ADASYN
+adasyn_rf.fit(X_train_adasyn, y_train_adasyn)
+adasyn_proba = adasyn_rf.predict_proba(X_val_split)
+adasyn_logloss = log_loss(y_val_split, adasyn_proba)
 
+계산된 확률값과 실제 타겟값을 통해 Log Loss점수를 계산
 
+print("SMOTE Log Loss 점수는 : ", smote_logloss)
+print("ADASYN Log Loss 점수는 : ", adasyn_logloss)
 
+--------------------------------------------
 
+SMOTE Log Loss 점수는 :  1.282533004610935
+ADASYN Log Loss 점수는 :  1.2825606978460544
 
+두 값의 차이를 비교하면, 로그 손실값이 더 낮은 SMOTE 방법이 더 좋은 성능을 보이는 것으로 판단된다.
+따라서 SMOTE를 사용하여 데이터 증강을 진행한다.
 
+---------------------------------------------------------------------------------------------------------------
+
+# SMOTE를 사용한 오버샘플링
+smote = SMOTE(random_state=42)
+x_train_over, y_train_over = smote.fit_resample(x_train_scaled , y_train)
+
+다음으로는 피처 선택을 진행하려 한다.
+
+피처 선택과 오버샘플링의 순서는 상황에 따라 다르게 선택된다.
+
+피처 선택 후 오버샘플링을 할 경우 - 불필요한 피처를 제거한 상태에서 오버샘플링을 수행하면 노이즈의 영향을 줄여 오버샘플링의 효과를 극대화할 수 있다.
+            피치 선택 과정에서 원래 데이터만 사용하므로 인위적으로 생성된 데이터의 영향을 받지 않는다. 피처 수가 줄기 때문에 오버샘플링 과정의 계산비용이 준다. 소수 클래스가 적은 상태에서 피처 선택을 수행하면, 유용한 피처를 놓칠 가능성이 있다. 데이터 불균형이 심한 경우, 소수 클래스와 관련된 피처가 중요하지 않다고 판단될 위험이 있다.
+        
+오버샘플링 후 피처 선택을 할 경우 - 데이터의 불균형이 조정된 상태에서 피처 중요도를 평가하므로, 오버샘플링으로 생성된 데이터 포인트를 고려하여 더욱 견고한 피처 선택 기준을 설정할 수 있다. 하지만 생성된 데이터가 데이터 분포를 왜곡할 수 있다.
+
+데이터셋에 다양한 피처가 있는 경우, 모든 피처를 모델 학습에 사용하기에는 과적합의 위험이 있다. 따라서 중요한 피처만을 선택하여 모델의 일반화 성능을 향상 시키려고 한다.
+
+오버샘플링 이후에 피처 선택을 하는 이유는, 데이터의 불균형을 먼저 조정함으로써 새롭게 생성된 데이터 포인트들의 특성을 반영한 상태에서 피처의 중요도를 평가하고자 함이다. 오버샘플링으로 인해 데이터의 패턴이나 분포가 약간 변경될 수 있으므로, 이를 고려한 상태에서 피처를 평가하면 더욱 신뢰성 있는 선택이 가능하다.
+
+*** 데이터의 불균형이 심한 경우 -> 오버샘플링을 먼저 적용하는 것이 일반적
+피처가 많고 계산 비용이 중요한 경우 -> 피처 수를 줄이고 이후 오버샘플링을 적용하는 것이 효율적
+생성된 데이터의 품질이 중요한 경우 -> 오버 샘플링을 먼저 수행하여 유의미한 피처를 포함할 수 있도록 한다.
+
+---------------------------------------------------------------------------------------------------------------
+
+랜덤 포레스트를 사용한 RFECV(Recursive Feature Elimination with Cross-Validation) 피처 선택 및 중요도 시각화
+
+후진 소거법은 피처 선택 방법중 하나로, 모든 피처를 포함한 상태에서 시작하여 반복적으로 가장 중요도가 낮은 피처를 하나씩 제거하는 방법이다.
+모델을 간단하게 만들어 모델의 해석을 용이하게 하며, 과적합의 위험을 줄여준다.
+또한 불필요한 피처나 잡음을 포함하는 피처를 제거함으로서 모델의 예측 성능을 향상시킨다.
+
+RFECV는 재귀적으로 피처 제거 방법과 교차 검증을 결합한 피처 선택 방법이다.
+모든 피처를 사용하여 모델을 학습시킨후, 피처 중요도나 계수를 기반으로 가장 중요도가 낮은 피처를 하나씩 제거하면서 모델의 성능 변화를 관찰한다.
+각 피처 조합에 대한 모델 성능은 교차 검증을 통해 평가되며, 이를 통해 피처를 제거한 후 모델이 일반화 성능을 얼마나 유지하는지 확인할 수 있다.
+교차 검증을 통한 성능 평가 결과를 바탕으로, 최적의 피처 조합을 자동으로 선택한다.
+이 과정에서는 사용자가 설정한 최소 피처 수를 고려하여 선택된다.
+
+*** REFCV는 수동으로 피처를 제거하는 것이 아니라 자동화된 프로세스를 통해 최적의 피처 조합을 찾기 위함이다.
+교차 검증을 통해 피처 제거의 영향을 좀 더 정확하게 평가하며, 과적합의 위험을 줄여준다.
+
+selector = RFECV(estimator=rf, step=4, cv=3, scoring=neg_log_loss, min_features_to_select=10)
+에서 정확한 검증 점수를 확인하고 싶을때 step = 1, cv = 5로
+동작 원리만 확인하고 싶다면 step = 4, cv = 3으로 설정한다.
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_selection import RFECV
+from sklearn.metrics import make_scorer, log_loss
+import time
+
+start = time.time()
+
+# 랜덤 포레스트 분류기 설정
+# rf = RandomForestClassifier(n_estimators=20, random_state=42) / 트리 개수는 20개로 설정한다.
+rf = RandomForestClassifier(n_estimators=5, random_state=42)
+
+# 사용자 정의 스코어 함수 생성
+neg_log_loss = make_scorer(log_loss, greater_is_better=False, needs_proba=True)
+
+-> make_scorer 함수를 통해 사용자 지정 스코어 함수로 log_loss를 선택. 작은값일 때를 선택하기에 greater_is_better = False, 확률값이 필요하므로
+needs_proba =True로 설정한다.
+
+# RFECV 객체 생성 (10개 이상의 피처를 선택하도록 설정)
+# selector = RFECV(estimator=rf, step=1, cv=5, scoring=neg_log_loss, min_features_to_select=10)
+selector = RFECV(estimator=rf, step=4, cv=3, scoring=neg_log_loss, min_features_to_select=10)
+
+* step은 한번 반복에서 제거할 피처의 수, cv는 교차 검증의 fold수
+
+# fit 메서드를 사용하여 피처 선택 수행
+selector = selector.fit(x_train_over, y_train_over)
+
+# 선택된 피처들의 실제 이름
+selected_feature_names = x_train_over.columns[selector.support_] / selector.support_를 사용하여 선택된 피처들의 인덱스를 확인
+print("피처의 수:", selector.n_features_)
+print("선택된 피처의 이름:", selected_feature_names)
+
+# 피처 중요도 가져오기
+feature_importances = selector.estimator_.feature_importances_ / feature_importances_를 통해 RFECV로 선택된 피처들의 중요도를 가져온다.
+
+# 피처 중요도와 선택된 피처 이름을 함께 정렬
+sorted_idx = np.argsort(feature_importances)[::-1] / argsort()함수를 사용하여 중요도를 기준으로 피처를 정렬한다.(중요도가 높은 순으로)
+sorted_names = selected_feature_names[sorted_idx]
+
+plt.figure(figsize=(12,8))
+plt.barh(range(selector.n_features_), feature_importances[sorted_idx], align='center')
+plt.yticks(range(selector.n_features_), sorted_names)
+plt.xlabel('Importance')
+plt.ylabel('Feature')
+plt.title('Feature Importances of Selected Features')
+plt.gca().invert_yaxis()  # 높은 중요도가 위에 오도록 y축을 뒤집음
+plt.show()
+
+print(f'소요된 시간(초): , {time.time() - start}')
+
+--------------------------------------------
+
+결과 해석 -> begin_month 의 중요도가 가장 높다는 것은 해당 피처가 타겟 변수를 예측하는데에 가장 중요한 역할을 한다는 것을 의미한다.
+고객이 현재까지 얼마나 오랜기간 카드를 유지하고 있는지에 따라서 그들의 신용 등급이 영향을 받을 수 있다는 것을 시사한다.
+
+반면 중요도가 급격히 떨어지는 피처가 있다면, 이는 해당 피처가 타겟 변수를 예측하는 데 상대적으로 덜 중요하다는 것을 의미한다.
+
+피처 중요도를 바탕으로 적은 수의 피처가 제거되었기 때문에, 여전히 과적합의 우려가 있다.
+모델의 훈련데이터에 너무 잘 맞아 실제 데이터에서는 일반화 성능이 떨어질 수 있기 때문에 과적합을 피하기 위해 추가적인 조치가 필요하다.
+
+피처 중요도와 교차 검증 점수를 고려하여 최적의 피처 조합을 선택하고자 한다.
+
+---------------------------------------------------------------------------------------------------------------
+
+피처 중요도를 활용한 최적 피처 선택 및 교차 검증 점수 시각화
+
+from sklearn.model_selection import cross_val_score
+import numpy as np
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+import time
+from sklearn.ensemble import RandomForestClassifier  # RandomForestClassifier 임포트
+
+start = time.time()
+
+# 중요도 임계값 설정 - 임계값이 오름차순으로 정렬됩니다.(피처 중요도를 기반으로 각 임계값에 따라 피처를 선택)
+thresholds = np.sort(feature_importances) / 이 값 이상일때의 피처를 선택
+
+# 각 임계값에 따른 검증 점수 저장
+scores = []
+
+# 최적의 검증 점수와 해당 시점의 임계값 저장
+best_score = float('-inf') / 음의 무한대로 초기화
+best_threshold = None
+best_feature_count = 0
+
+for threshold in tqdm(thresholds): / thresholds에 포함된 각 임계값들에 대해서 다음을 수행
+    # 임계값보다 중요도가 큰 피처 선택하여 저장
+    select_feature = selected_feature_names[feature_importances > threshold]
+    
+    # 선택된 피처가 없는 경우 검증 점수 계산 스킵
+    if len(select_feature) == 0:
+        continue
+    
+    # RandomForestClassifier 모델을 매 반복마다 새로 생성(선택된 피처가 있다면)
+    # rf = RandomForestClassifier(n_estimators=20)  # 전체 성능을 확인하고 싶을 경우 이 주석을 해제하고, 아래 모델 정의 부분에 주석을 설정해주세요.
+    rf = RandomForestClassifier(n_estimators=5)  # 모델 정의
+    
+    # 데이터에서 해당 피처만 추출
+    x_train_selected = x_train_over[select_feature]
+    
+    # 교차 검증을 통한 점수 계산
+    score = cross_val_score(rf, x_train_selected, y_train_over, cv=3, scoring='neg_log_loss').mean()
+    scores.append(score)
+    
+    # 최적의 검증 점수 업데이트
+    if score > best_score:
+        best_score = score
+        best_threshold = threshold
+        best_feature_count = len(select_feature)
+
+# 검증 점수 시각화
+plt.figure(figsize=(12,6))
+plt.plot(thresholds[:len(scores)], scores, marker='o')
+plt.xlabel("Feature Importance Threshold")
+plt.ylabel("Mean CV Score")
+plt.title("Mean CV Score vs. Feature Importance Threshold")
+plt.show()
+
+print(f"최적의 임계값: {best_threshold}")
+print(f"해당 임계값에서의 검증 점수: {best_score}")
+print(f"선택된 피처의 개수: {best_feature_count}")
+print(f"선택된 피처: {selected_feature_names[feature_importances > best_threshold]}")
+
+print(f'소요된 시간(초): , {time.time() - start}')
+
+--------------------------------------------
+
+최적의 임계값: 0.00927607055547998
+해당 임계값에서의 검증 점수: -2.9288696605046014
+선택된 피처의 개수: 23
+선택된 피처: Index(['gender', 'car', 'reality', 'child_num', 'income_total', 'edu_type',
+       'days_birth', 'days_employed', 'work_phone', 'phone', 'family_size',
+       'begin_month', 'age', 'income_type_1', 'income_type_2', 'family_type_1',
+       'family_type_2', 'job_type_1', 'job_type_2', 'job_type_3', 'job_type_4',
+       'income_by_employed_days', 'cluster'],
+      dtype='object')
+소요된 시간(초): , 29.66720986366272
+
+로그 손실은 예측 확률과 실제 값 사이의 차이를 측정하는 지표이므로, 0에 가까울 수록 모델의 예측 성능이 우수하다.
+코드를 실행한 결과, RFECV를 사용했을 때(26개)보다 더 적은 피처가 선택되었다.
+
+선택된 23개의 피처를 활용하여 최종적으로 credit을 분류하는 모델을 개발
+
+---------------------------------------------------------------------------------------------------------------
+
+보팅 앙상블(Voting)
+
+여러개의 기본 모델들의 예측 결과를 조합하여 최종 예측 결과를 만드는 방법
+
+하드 보팅 - 각 모델의 예측값들 중 가장 많이 선택된 클래스를 최종 예측값으로 선택
+소프트 보팅 - 각 모델이 예측한 확률값들을 평균내어 가장 높은 확률을 가진 클래스를 최종 예측값으로 선택
+
+단일 모델만을 사용할 때보다 여러 모델을 조합하여 사용하면, 각 모델의 장점을 취하고 단점을 보완가능
+모델마다 서로 다른 특성을 가진 데이터에 대해 잘 예측하는 경향이 있다.
+
+이번에 사용할 보팅은 소프트.
+
+각 모델의 확률 정보를 사용하여 예측한다. 이는 모델의 확신도를 반영하므로 각 모델의 강점을 더 잘 활용할 수 있다.
+또한, 이번 문제에서는 각 클래스에 대한 확률을 예측하는 것이 필요하므로 소프트 보팅이 더 적합하다.
+
+from sklearn.ensemble import VotingClassifier
+from xgboost import XGBClassifier
+
+start = time.time()
+
+# RFECV를 통해 얻은 피처 중요도에 따라 최적의 임계값을 초과하는 피처들만 선택
+final_use_cols = selected_feature_names[feature_importances > best_threshold]
+x_train_final = x_train_over[final_use_cols]
+y_final = y_train_over
+
+# 1번 모델
+rf = RandomForestClassifier(n_estimators = 5, random_state=42)
+
+# 2번 모델
+xgb = XGBClassifier(n_estimators = 5, random_state=42)
+
+# Soft Voting 기반의 앙상블 모델 생성 / 소프트 보팅일 때
+soft_voting_clf = VotingClassifier(
+    estimators=[('randomforest', rf), ('xgboost', xgb)],
+    voting='soft'
+)
+
+# 교차 검증을 사용하여 Soft Voting 앙상블 모델의 검증 점수 계산
+soft_voting_scores = cross_val_score(soft_voting_clf, x_train_final, y_final, cv=5, scoring='neg_log_loss')
+print("Soft Voting Cross Val Score:", soft_voting_scores.mean())
+print(f'소요된 시간(초): , {time.time() - start}')
+
+--------------------------------------------
+
+Soft Voting Cross Val Score: -0.721225687575249
+소요된 시간(초): , 2.3935129642486572
